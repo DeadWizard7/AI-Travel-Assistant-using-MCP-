@@ -1,0 +1,316 @@
+{
+  "name": "AI Travel Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "da129199-186a-4660-a928-6b0002006691",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -416,
+        0
+      ],
+      "webhookId": "ai-travel-assistant-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a friendly, practical AI Travel Assistant for trips within Bangladesh and nearby countries (Nepal, etc.).\n\nHow to work on every request:\n1. Ask for the user's name at the start of a new conversation if you don't have it yet — it is the key used to remember their preferences for future trips.\n2. Call the get_user_preferences tool using the user's name as the key to check if you already know their preferences (budget level, hotel type, transport, diet, favorite activities). If found, apply them automatically without re-asking.\n3. If the user states or implies a NEW or CHANGED preference at any point (e.g. \"I prefer budget hotels\", \"I'm vegetarian\", \"I like adventure activities\"), call save_user_preference to store it (always include the user's name), then continue.\n4. Resolve the destination's coordinates FIRST by calling get_coordinates with the place name. Use the returned latitude/longitude for the location-based tools below.\n5. Call get_weather with those coordinates for weather-appropriate advice.\n6. Call get_attractions, get_hotels, and get_restaurants with those coordinates for things to do, places to stay, and places to eat.\n7. If the trip is international (outside Bangladesh, e.g. Nepal), call get_exchange_rate (base currency BDT) so the user knows approximate costs.\n8. Combine everything into ONE clear, personalized recommendation: weather-appropriate packing tips, 2-3 hotel picks matching their budget preference, must-see attractions, restaurant picks (respecting dietary preference if known), and a short day-by-day plan if they asked for a multi-day itinerary.\n9. Be concise, use bullet points for lists, and always ground weather/hotel/attraction claims in the tool results rather than guessing.\n\nIf a tool returns an error or no results (e.g. destination not supported), tell the user honestly and answer with your general knowledge instead, clearly noting it isn't live data."
+        }
+      },
+      "id": "793fc524-886e-4001-858e-6b107dea9dfc",
+      "name": "AI Travel Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "id": "93b64c14-eb71-46e3-822d-a9b929247c92",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -192,
+        224
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eMBmEKwSNwKT4XDF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "bae07edd-a8b2-4f97-ada8-a25e9f458017",
+      "name": "Conversation Memory (short-term)",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -64,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1I7Q3h0OPwKptbZ1iW1aUBYzgJgBY_yqr5qbitpBUPg0",
+          "mode": "list",
+          "cachedResultName": "UserPreferences",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1I7Q3h0OPwKptbZ1iW1aUBYzgJgBY_yqr5qbitpBUPg0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1I7Q3h0OPwKptbZ1iW1aUBYzgJgBY_yqr5qbitpBUPg0/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "ac7eb62a-d8da-48d3-b2ad-4d996c9cdf08",
+      "name": "Get User Preferences",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        192,
+        224
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tLyAz0evMSHpZ0tF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1I7Q3h0OPwKptbZ1iW1aUBYzgJgBY_yqr5qbitpBUPg0",
+          "mode": "list",
+          "cachedResultName": "UserPreferences",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1I7Q3h0OPwKptbZ1iW1aUBYzgJgBY_yqr5qbitpBUPg0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1I7Q3h0OPwKptbZ1iW1aUBYzgJgBY_yqr5qbitpBUPg0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User_name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('User_name__using_to_match_', ``, 'string') }}",
+            "Budget_level": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Budget_level', ``, 'string') }}",
+            "Hotel_type": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Hotel_type', ``, 'string') }}",
+            "Dietary_preference": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Dietary_preference', ``, 'string') }}",
+            "Favorite_activities": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Favorite_activities', ``, 'string') }}",
+            " Transport_method": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('_Transport_method', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "User_name"
+          ],
+          "schema": [
+            {
+              "id": "User_name",
+              "displayName": "User_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Budget_level",
+              "displayName": "Budget_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Hotel_type",
+              "displayName": "Hotel_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": " Transport_method",
+              "displayName": " Transport_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Dietary_preference",
+              "displayName": "Dietary_preference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Favorite_activities",
+              "displayName": "Favorite_activities",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a9175198-bb0c-461b-8ee5-337b9b150696",
+      "name": "Save User Preference",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        320,
+        224
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tLyAz0evMSHpZ0tF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://nabil099.app.n8n.cloud/mcp/b149d61f-8d37-4c5e-b950-828f2d9e95ba",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        64,
+        224
+      ],
+      "id": "7f85c292-9295-4a32-9d76-b694d6755fdd",
+      "name": "MCP Client"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Travel Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Travel Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory (short-term)": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Travel Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Preferences": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Travel Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save User Preference": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Travel Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Travel Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Travel Agent": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4bb173e9-89bb-4ec0-8943-2cecc2df3eb4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cd73fab5a4f1a786ca110bad49bc4bb133334fc92cb8c75a1639d750b9ec3b50"
+  },
+  "nodeGroups": [],
+  "id": "uAuyFWE05cvkVU80",
+  "tags": []
+}
